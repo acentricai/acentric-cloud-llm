@@ -43,6 +43,30 @@ export interface ResponsesProfile<P extends ResponsesProvider> {
   readonly echoFields: readonly string[];
   /** Fields the provider reports on output items but refuses on input; left out on replay. */
   readonly outputOnlyFields: readonly string[];
+  /** Fields of the raw `usage` that are left out of `native.usage`, such as per-item breakdowns. */
+  readonly usageEchoFields?: readonly string[];
+  /**
+   * The provider answers only with server-sent events. The adapter sends
+   * `stream: true` and reads the events into one finished response; callers
+   * still get one response, never a stream.
+   */
+  readonly streamed?: boolean;
+  /** Request fields the provider requires, set on every request; the caller may not set them. */
+  readonly fixedFields?: JsonRecord;
+  /**
+   * Codex's Responses Lite placement: the request's tools go in a leading
+   * `additional_tools` input item, as a `functions` namespace beside the native
+   * tools, and `instructions` in the developer message after it, instead of the
+   * top-level `tools` and `instructions`.
+   */
+  readonly lite?: boolean;
+  /**
+   * The options with the provider's own client's constants filled in where the
+   * request leaves them out (Codex's, for ChatGPT). The caller's values win.
+   */
+  withDefaults?(options: JsonRecord): JsonRecord;
+  /** Headers that follow the request's options, such as a session ID. */
+  requestHeaders?(options: JsonRecord): Record<string, string>;
   /**
    * Which model an assistant message records: the requested one, or the one
    * the response names, where routing (aliases, fallback lists) may pick
@@ -75,6 +99,8 @@ export interface ErrorInput {
   readonly metadata?: JsonRecord;
   /** A canonical error category beside the error object (OpenRouter's `error_type`). */
   readonly errorType?: string;
+  /** The error object as the provider sent it, for fields only one provider has. */
+  readonly error?: JsonRecord;
 }
 
 /**
@@ -85,4 +111,6 @@ export interface ErrorReading {
   readonly kind: LlmErrorKind;
   readonly param?: string;
   readonly message?: string;
+  /** When the limit resets, where the body says so rather than `Retry-After`. */
+  readonly retryAfterMs?: number;
 }

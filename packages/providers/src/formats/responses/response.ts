@@ -85,7 +85,9 @@ export function parseResponse<P extends ResponsesProvider>(
     isRecord(body.incomplete_details) && typeof body.incomplete_details.reason === 'string'
       ? body.incomplete_details.reason
       : undefined;
-  const extras = isRecord(body.usage) ? usageExtras(body.usage) : undefined;
+  const extras = isRecord(body.usage)
+    ? usageExtras(omit(body.usage, profile.usageEchoFields ?? []))
+    : undefined;
   const native = {
     ...omit(body, [...FORMAT_ECHO_FIELDS, ...profile.echoFields]),
     ...(extras !== undefined ? { usage: extras } : {}),

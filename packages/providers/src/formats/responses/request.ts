@@ -17,6 +17,18 @@ export function buildRequest<P extends ResponsesProvider>(
 ): JsonRecord {
   const { provider } = profile;
   const options = refuseOwned(provider, request.providerOptions, OWNED_OPTIONS, 'request');
+  const fixed: JsonRecord = {
+    ...profile.fixedFields,
+    ...(profile.streamed ? { stream: true } : {}),
+  };
+  for (const key of Object.keys(fixed)) {
+    if (key in options) {
+      throw invalidRequest(
+        provider,
+        `providerOptions.${key} is always ${JSON.stringify(fixed[key])} for ${profile.label}; leave it out.`,
+      );
+    }
+  }
   if (options.stream === true) {
     throw invalidRequest(
       provider,
@@ -29,31 +41,117 @@ export function buildRequest<P extends ResponsesProvider>(
       'Background mode is not supported: complete returns one finished response.',
     );
   }
-  const { tools: nativeTools, ...passthrough } = options;
+  const { tools: nativeTools, ...rest } = options;
   if (nativeTools !== undefined && !Array.isArray(nativeTools)) {
     throw invalidRequest(
       provider,
       'providerOptions.tools must be an array of native tool definitions.',
     );
   }
+  const passthrough = profile.withDefaults?.(rest) ?? rest;
 
-  const tools = [
-    ...(request.tools ?? []).map((tool) => buildTool(tool, profile)),
-    ...(nativeTools ?? []),
-  ];
+  const ours = (request.tools ?? []).map((tool) => buildTool(tool, profile));
   const instructions = buildInstructions(provider, request.instructions);
   if (!Array.isArray(request.messages))
     throw invalidRequest(provider, 'messages must be an array.');
+  const input = request.messages.flatMap((message, index) =>
+    buildItems(message as unknown, `messages[${index}]`, profile),
+  );
 
+  if (profile.lite) {
+    const tools = liteTools(ours, checkLiteTools(profile, nativeTools ?? []));
+    return {
+      ...passthrough,
+      model: request.model,
+      ...fixed,
+      input: [
+        ...(tools.length ? [{ type: 'additional_tools', role: 'developer', tools }] : []),
+        ...(instructions !== undefined
+          ? [
+              {
+                type: 'message',
+                role: 'developer',
+                content: [{ type: 'input_text', text: instructions }],
+              },
+            ]
+          : []),
+        ...input,
+      ],
+    };
+  }
+
+  const tools = [...ours, ...(nativeTools ?? [])];
   return {
     ...passthrough,
     model: request.model,
+    ...fixed,
     ...(instructions !== undefined ? { instructions } : {}),
-    input: request.messages.flatMap((message, index) =>
-      buildItems(message as unknown, `messages[${index}]`, profile),
-    ),
+    input,
     ...(tools.length ? { tools } : {}),
   };
+}
+
+/** The namespace Codex groups function and custom tools in for Responses Lite. */
+const LITE_NAMESPACE = 'functions';
+
+/**
+ * Responses Lite takes only tools the caller executes: functions and custom
+ * tools (alone or in namespaces) and client tool search. It refuses hosted tools
+ * at the top level, and ignores them in `additional_tools` without an error.
+ */
+function checkLiteTools<P extends ResponsesProvider>(
+  profile: ResponsesProfile<P>,
+  tools: readonly unknown[],
+): unknown[] {
+  return tools.map((tool, index) => {
+    const type = isRecord(tool) ? tool.type : undefined;
+    const callerRuns =
+      type === 'function' ||
+      type === 'custom' ||
+      type === 'namespace' ||
+      (type === 'tool_search' && isRecord(tool) && tool.execution === 'client');
+    if (!callerRuns) {
+      throw invalidRequest(
+        profile.provider,
+        `providerOptions.tools[${index}] is a ${String(type)} tool; ${profile.label} takes only ` +
+          'function, custom and namespace tools, and tool_search with execution "client".',
+      );
+    }
+    return tool;
+  });
+}
+
+/**
+ * The tools of a Responses Lite `additional_tools` item, as Codex builds it: the
+ * request's tools in the `functions` namespace (merged with a native one of that
+ * name, which Codex also does), then the other native tools.
+ */
+function liteTools(ours: readonly JsonRecord[], native: readonly unknown[]): unknown[] {
+  const merged = native.filter(
+    (tool): tool is JsonRecord =>
+      isRecord(tool) && tool.type === 'namespace' && tool.name === LITE_NAMESPACE,
+  );
+  const members = [
+    ...ours,
+    ...merged.flatMap((tool) => (Array.isArray(tool.tools) ? tool.tools : [])),
+  ];
+  const description = merged.find(
+    (tool) => typeof tool.description === 'string' && tool.description.trim(),
+  )?.description;
+  const others = native.filter((tool) => !merged.includes(tool as JsonRecord));
+  return [
+    ...(members.length
+      ? [
+          {
+            type: 'namespace',
+            name: LITE_NAMESPACE,
+            description: description ?? '',
+            tools: members,
+          },
+        ]
+      : []),
+    ...others,
+  ];
 }
 
 function buildInstructions(provider: string, value: unknown): string | undefined {

@@ -153,3 +153,23 @@ test('a network failure is a 502 that says nothing about the request', async () 
   const text = await response.text();
   assert.equal(text.includes('sk-test'), false);
 });
+
+test('refuses ChatGPT, which blocks requests from Workers, and leaves it out of the models', async () => {
+  const sent = upstream(completion);
+  const response = await post('/v1/complete', {
+    provider: 'chatgpt',
+    credentials: { accessToken: 'token' },
+    model: 'gpt-6-luna',
+    messages: body.messages,
+  });
+  assert.equal(response.status, 400);
+  const { error } = (await response.json()) as { error: { kind: string; message: string } };
+  assert.equal(error.kind, 'invalid_request');
+  assert.match(error.message, /direct client/);
+  assert.equal(sent.length, 0);
+
+  const models = await worker.fetch(new Request('https://gateway.test/v1/models'));
+  const listed = (await models.json()) as { models: { provider: string }[] };
+  assert.ok(listed.models.length > 0);
+  assert.ok(listed.models.every((model) => model.provider !== 'chatgpt'));
+});

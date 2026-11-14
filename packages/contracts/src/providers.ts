@@ -1,4 +1,5 @@
 import type { AnthropicSpec } from './providers/anthropic.ts';
+import type { ChatGptSpec } from './providers/chatgpt.ts';
 import type { FireworksSpec } from './providers/fireworks.ts';
 import type { OpenAiSpec } from './providers/openai.ts';
 import type { OpenRouterSpec } from './providers/openrouter.ts';
@@ -36,6 +37,7 @@ export interface Providers {
   readonly fireworks: FireworksSpec;
   readonly anthropic: AnthropicSpec;
   readonly openrouter: OpenRouterSpec;
+  readonly chatgpt: ChatGptSpec;
 }
 
 /** Fails to compile when a registered provider does not satisfy `ProviderSpec`. */

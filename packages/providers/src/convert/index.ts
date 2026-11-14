@@ -13,6 +13,7 @@ import type {
   Provider,
   ToolResultMessage,
 } from '@acentric-llm/contracts';
+import { chatGptProfile } from '../providers/chatgpt.ts';
 import { fireworksProfile } from '../providers/fireworks.ts';
 import { openAiProfile } from '../providers/openai.ts';
 import { openRouterProfile } from '../providers/openrouter.ts';
@@ -65,6 +66,14 @@ const TARGETS: { readonly [P in Provider]: Capabilities } = {
     // Counted as input, but the model does not use reasoning without its ciphertext.
     plainReasoning: false,
   },
+  chatgpt: {
+    api: 'openai-responses',
+    customTools: chatGptProfile.customTools,
+    files: chatGptProfile.fileData !== undefined,
+    fileIds: chatGptProfile.fileIds,
+    // Its reasoning is encrypted, as OpenAI's.
+    plainReasoning: false,
+  },
 };
 
 /**
@@ -79,6 +88,7 @@ const PART_OPTIONS: { readonly [P in Provider]: readonly string[] } = {
   anthropic: ['cache_control', 'citations', 'context', 'title', 'transformations', 'toolset_name'],
   // Its Responses API takes breakpoints, not per-block `cache_control`.
   openrouter: ['detail', 'prompt_cache_breakpoint'],
+  chatgpt: ['detail', 'namespace'],
 };
 
 const FORMATS: { readonly [A in ApiFormat]?: FormatConverter } = {

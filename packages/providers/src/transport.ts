@@ -25,6 +25,8 @@ export interface PostRequest {
   readonly fetch?: typeof fetch | undefined;
   /** Turns a non-2xx answer into an error. */
   readonly httpError: (answer: HttpAnswer) => LlmError;
+  /** Reads a 2xx body that is not JSON, such as server-sent events. Throws an `LlmError`. */
+  readonly parse?: ((text: string) => unknown) | undefined;
 }
 
 /** A provider's non-2xx answer. */
@@ -75,6 +77,7 @@ export async function postJson(request: PostRequest): Promise<JsonAnswer> {
       (
         response.headers.get('x-request-id') ??
         response.headers.get('request-id') ??
+        response.headers.get('x-oai-request-id') ??
         response.headers.get('x-generation-id')
       )?.trim() || undefined;
     if (response.status >= 300 && response.status < 400) {
@@ -96,8 +99,9 @@ export async function postJson(request: PostRequest): Promise<JsonAnswer> {
     }
     let body: unknown;
     try {
-      body = JSON.parse(text);
-    } catch {
+      body = request.parse ? request.parse(text) : JSON.parse(text);
+    } catch (error) {
+      if (error instanceof LlmError) throw error;
       throw new LlmError(`${label} returned invalid JSON.`, {
         provider,
         kind: 'invalid_response',

@@ -18,7 +18,8 @@ workers/gateway       the Cloudflare Worker: one /v1/complete for every provider
 Providers: OpenAI ([notes](docs/providers/openai.md)), Fireworks
 ([notes](docs/providers/fireworks.md)), Anthropic
 ([notes](docs/providers/anthropic.md)), OpenRouter
-([notes](docs/providers/openrouter.md)).
+([notes](docs/providers/openrouter.md)), ChatGPT, the Codex backend with a
+ChatGPT sign-in, direct mode only ([notes](docs/providers/chatgpt.md)).
 Moving a conversation between them: [docs/conversion.md](docs/conversion.md).
 
 ## Development
@@ -45,5 +46,6 @@ ANTHROPIC_API_KEY=... node --conditions=source scripts/live-anthropic.ts
 ANTHROPIC_API_KEY=... GATEWAY_URL=http://localhost:8787 node --conditions=source scripts/live-anthropic.ts
 OPENROUTER_API_KEY=... node --conditions=source scripts/live-openrouter.ts
 OPENROUTER_API_KEY=... GATEWAY_URL=http://localhost:8787 node --conditions=source scripts/live-openrouter.ts
+node --conditions=source scripts/live-chatgpt.ts   # uses the Codex sign-in in ~/.codex/auth.json
 OPENAI_API_KEY=... ANTHROPIC_API_KEY=... FIREWORKS_API_KEY=... OPENROUTER_API_KEY=... node --conditions=source scripts/live-convert.ts
 ```

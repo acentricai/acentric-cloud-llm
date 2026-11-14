@@ -43,7 +43,9 @@ type Equal<A, B> =
   (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
 function expect<T extends true>(): T | void {}
 
-expect<Equal<Provider, 'openai' | 'fireworks' | 'anthropic' | 'openrouter' | 'acme' | 'zeta'>>();
+expect<
+  Equal<Provider, 'openai' | 'fireworks' | 'anthropic' | 'openrouter' | 'chatgpt' | 'acme' | 'zeta'>
+>();
 
 const acmeReply: AssistantMessage<'acme'> = {
   role: 'assistant',

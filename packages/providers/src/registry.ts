@@ -5,11 +5,13 @@ import {
   type Provider,
 } from '@acentric-llm/contracts';
 import { ANTHROPIC_MODELS } from './catalog/anthropic.ts';
+import { CHATGPT_MODELS } from './catalog/chatgpt.ts';
 import { FIREWORKS_MODELS } from './catalog/fireworks.ts';
 import { OPENAI_MODELS } from './catalog/openai.ts';
 import { OPENROUTER_MODELS } from './catalog/openrouter.ts';
 import type { ProviderDefinition } from './definition.ts';
 import { anthropic } from './providers/anthropic.ts';
+import { chatgpt } from './providers/chatgpt.ts';
 import { fireworks } from './providers/fireworks.ts';
 import { openai } from './providers/openai.ts';
 import { openrouter } from './providers/openrouter.ts';
@@ -22,6 +24,7 @@ export const PROVIDERS: { readonly [P in Provider]: ProviderDefinition<P> } = {
   fireworks,
   anthropic,
   openrouter,
+  chatgpt,
 };
 
 /** Every catalog model, by provider. */
@@ -30,6 +33,7 @@ export const MODELS: { readonly [P in Provider]: readonly ModelInfo<P>[] } = {
   fireworks: FIREWORKS_MODELS,
   anthropic: ANTHROPIC_MODELS,
   openrouter: OPENROUTER_MODELS,
+  chatgpt: CHATGPT_MODELS,
 };
 
 export function isProvider(value: unknown): value is Provider {

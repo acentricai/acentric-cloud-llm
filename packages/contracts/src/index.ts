@@ -14,5 +14,6 @@ export type * from './providers/openai.ts';
 export type * from './providers/fireworks.ts';
 export type * from './providers/anthropic.ts';
 export type * from './providers/openrouter.ts';
+export type * from './providers/chatgpt.ts';
 export * from './errors.ts';
 export * from './http.ts';

@@ -107,7 +107,12 @@ function classify<P extends ResponsesProvider>(
  * some validation errors, beside it), and a canonical category beside the
  * error (Responses) or in its metadata (other formats).
  */
-function errorInput(fields: ErrorFields, body: unknown, status?: number): ErrorInput {
+function errorInput(
+  fields: ErrorFields,
+  body: unknown,
+  detail: unknown,
+  status?: number,
+): ErrorInput {
   const { param: _param, metadata: own, ...rest } = fields;
   const metadata = own ?? (isRecord(body) && isRecord(body.metadata) ? body.metadata : undefined);
   const type =
@@ -117,6 +122,7 @@ function errorInput(fields: ErrorFields, body: unknown, status?: number): ErrorI
     ...(status !== undefined ? { status } : {}),
     ...(metadata !== undefined ? { metadata } : {}),
     ...(typeof type === 'string' && type ? { errorType: type } : {}),
+    ...(isRecord(detail) ? { error: detail } : {}),
   };
 }
 
@@ -143,7 +149,7 @@ export function httpError<P extends ResponsesProvider>(
   const { reading, kind } = classify(
     profile,
     fields,
-    errorInput(fields, answer.body, answer.status),
+    errorInput(fields, answer.body, detail, answer.status),
   );
   const param = fields.param ?? reading?.param;
   return new LlmError(
@@ -159,7 +165,7 @@ export function httpError<P extends ResponsesProvider>(
       providerType: fields.type,
       providerParam: param,
       providerError: detail,
-      retryAfterMs: parseRetryAfter(answer.headers.get('retry-after')),
+      retryAfterMs: parseRetryAfter(answer.headers.get('retry-after')) ?? reading?.retryAfterMs,
       nativeError: answer.body,
     },
   );
@@ -176,13 +182,14 @@ export function failedResponseError<P extends ResponsesProvider>(
   usage: Usage | undefined,
 ): LlmError {
   const { fields, detail } = readError({ error: body.error });
-  const { reading, kind } = classify(profile, fields, errorInput(fields, body));
+  const { reading, kind } = classify(profile, fields, errorInput(fields, body, detail));
   return new LlmError(reading?.message ?? fields.message ?? `${profile.label} response failed.`, {
     kind: kind ?? (fields.code === undefined ? 'provider_error' : 'invalid_request'),
     provider: profile.provider,
     providerCode: fields.code,
     providerParam: fields.param ?? reading?.param,
     providerError: detail,
+    retryAfterMs: reading?.retryAfterMs,
     responseId,
     usage,
   });

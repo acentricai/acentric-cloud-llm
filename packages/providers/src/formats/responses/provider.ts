@@ -9,6 +9,7 @@ import {
   withRequestId,
 } from '../../transport.ts';
 import { httpError } from './errors.ts';
+import { readEvents } from './events.ts';
 import type { ResponsesProfile, ResponsesProvider } from './profile.ts';
 import { buildRequest } from './request.ts';
 import { parseResponse } from './response.ts';
@@ -26,23 +27,28 @@ export function createResponsesProvider<P extends ResponsesProvider>(
       const { provider, label } = profile;
       if (options.signal?.aborted) throw cancelled(provider, label);
       const credentials = profile.credentials(request.credentials);
+      const json = buildRequest(request, profile);
       let body: string;
       try {
-        body = JSON.stringify(buildRequest(request, profile));
-      } catch (error) {
-        if (error instanceof Error && error.name === 'LlmError') throw error;
+        body = JSON.stringify(json);
+      } catch {
         throw invalidRequest(provider, `The ${label} request could not be serialized to JSON.`);
       }
       const answer = await postJson({
         provider,
         label,
         url: profile.url,
-        headers: jsonHeaders(provider, profile.headers(credentials)),
+        headers: jsonHeaders(provider, {
+          ...(profile.streamed ? { accept: 'text/event-stream' } : {}),
+          ...profile.requestHeaders?.(json),
+          ...profile.headers(credentials),
+        }),
         body,
         timeoutMs: Math.min(request.timeoutMs ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS),
         signal: options.signal,
         fetch: options.fetch,
         httpError: (http) => httpError(profile, http),
+        parse: profile.streamed ? (text) => readEvents(text, provider, label) : undefined,
       });
       try {
         return parseResponse(request, answer, profile);

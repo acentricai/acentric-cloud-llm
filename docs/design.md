@@ -40,8 +40,11 @@ little worse.
    what was asked, the request fails with an error that says so; a helper
    may do an explicit transformation instead.
 2. **The gateway is stateless.** It stores nothing, logs no credentials or
-   content, and injects no defaults. It maps our shared shapes to the
-   provider's, passes everything else through, and maps the result back.
+   content, and injects no defaults of its own. It maps our shared shapes to
+   the provider's, passes everything else through, and maps the result back.
+   A profile sets only what its provider requires, and, where a provider is
+   one client's backend (ChatGPT's is Codex's), that client's constants,
+   which the caller can override.
 3. **Light.** No runtime dependencies in the SDK or the worker. No official
    provider SDKs: we write the types we need ourselves.
 4. **Fully typed, open at the edges.** Types narrow by provider: options,
@@ -50,7 +53,8 @@ little worse.
 5. **No streaming.** Agents work in the background and nobody needs to watch
    tokens arrive. A complete response is simpler for the caller, the
    gateway and durable runtimes like acentric-cloud, where a handler returns
-   one result.
+   one result. A provider that answers only with a stream (ChatGPT) is read
+   to its end inside the adapter; callers still get one response.
 6. **Callers own policy.** No retries in the SDK or the gateway. Errors are
    structured so the caller can decide.
 
@@ -152,7 +156,9 @@ its one provider so far. A provider is a profile on a format: base
 URL, credentials and headers, fields it forbids or requires, capability
 flags (file parts, file IDs, custom tools), and small hooks for what is really
 its own (reading errors, the price multiplier or the cost it reports, fields
-it reports on output but refuses on input). Native item types are the
+it reports on output but refuses on input, fields it requires on every
+request, answering only with events, Codex's Responses Lite placement of
+tools and instructions). Native item types are the
 format's, extended by the provider. One provider ID uses one API format; a
 provider reachable through two formats gets two IDs.
 
@@ -256,11 +262,19 @@ provider's fixed URL, and are never logged, stored or echoed in errors. The
 same holds for secrets inside native tool definitions (MCP authorization,
 shell domain secrets): the gateway never logs request bodies.
 
+**D19. A provider may be direct-only.** Some providers cannot be reached from
+a Cloudflare Worker: chatgpt.com refuses every request carrying the
+`CF-Worker` header, which Cloudflare adds to all Worker subrequests. The
+gateway refuses such a provider with an `invalid_request` that names the
+direct client, and leaves its models out of `/v1/models`. The adapter is the
+same in both modes.
+
 ## How we add a provider
 
 One at a time, in order: **OpenAI** (done), **Fireworks** (done),
 **Anthropic** (done), **OpenRouter** (done, for models without a provider
-of their own), **Google Gemini.** For each:
+of their own), **ChatGPT** (done: the Codex backend with a ChatGPT sign-in,
+direct only), **Google Gemini.** For each:
 
 1. Research the provider's current docs and API reference: request fields,
    output items, what must be replayed and how, state (`store`, previous

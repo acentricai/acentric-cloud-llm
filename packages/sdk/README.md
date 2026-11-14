@@ -1,8 +1,8 @@
 # @acentric-cloud/llm
 
 One `complete()` for many LLM providers (OpenAI, Anthropic, Fireworks,
-OpenRouter), with each provider's native features. Bring your own keys: they
-travel with each request and are never stored.
+OpenRouter, ChatGPT), with each provider's native features. Bring your own
+keys: they travel with each request and are never stored.
 
 ```sh
 npm install @acentric-cloud/llm
@@ -41,6 +41,21 @@ const llm = createDirectClient({ credentials: { openai: { apiKey: '...' } } });
 
 The same client, calling providers from your process with the adapters the
 gateway runs. It bundles every adapter.
+
+ChatGPT (the Codex backend, billed to a ChatGPT plan) works only this way, and
+not inside a Cloudflare Worker: chatgpt.com refuses requests from Workers.
+Pass the sign-in's access token, as Codex keeps it in `~/.codex/auth.json`:
+
+```ts
+const llm = createDirectClient({
+  credentials: { chatgpt: { accessToken: tokens.access_token, accountId: tokens.account_id } },
+});
+await llm.complete({ provider: 'chatgpt', model: 'gpt-6.1-sol', messages });
+```
+
+The token expires; refresh it before it does. Nothing is stored at ChatGPT, so
+send the whole conversation every time, with a `prompt_cache_key` per
+conversation.
 
 ## Without fetch: `@acentric-cloud/llm/core`
 

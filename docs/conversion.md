@@ -35,7 +35,7 @@ system and tool result messages are shared. For each assistant message:
 
 1. **Same provider and model:** kept as is.
 2. **Same API format, another provider or model** (between OpenAI,
-   Fireworks and OpenRouter, or OpenAI model A → model B): filtered. Items the target can take are kept;
+   Fireworks, OpenRouter and ChatGPT, or OpenAI model A → model B): filtered. Items the target can take are kept;
    item IDs are dropped when the provider changes; reasoning bound to the
    source model and provider items (hosted tool calls, compaction) go.
 3. **Another API format** (Responses ↔ Messages): read into provider-neutral
@@ -61,7 +61,7 @@ provider changes, since a response ID belongs to the provider that answered.
 | `native` messages                                                         | Kept for their own provider; otherwise dropped.                                                                                                                                                     |
 | Tool call IDs                                                             | Rewritten only for Anthropic (`^[a-zA-Z0-9_-]+$`): invalid characters become `_`, plus a short hash of the original. Results follow the same mapping.                                               |
 | File parts                                                                | Dropped for a target that takes no files (Fireworks).                                                                                                                                               |
-| Images and files by file ID                                               | Dropped for a target that takes no file IDs (Fireworks, OpenRouter). Otherwise kept: a file ID from another provider fails there with a clear `not_found`.                                          |
+| Images and files by file ID                                               | Dropped for a target that takes no file IDs (Fireworks, OpenRouter, ChatGPT). Otherwise kept: a file ID from another provider fails there with a clear `not_found`.                                 |
 | Options on parts and tool results                                         | Keys another provider owns and the target does not are dropped (`cache_control`, `detail`, `caller`, `toolset_name`, ...). Keys the target owns, and unknown keys, are kept. Nothing is translated. |
 | Messages left empty                                                       | Dropped.                                                                                                                                                                                            |
 | The application's `custom` messages                                       | Kept.                                                                                                                                                                                               |
@@ -77,7 +77,7 @@ for the provider it is sending to.
 - **`reasoning: 'drop' | 'text'`** (default `drop`): what happens to reasoning
   the target cannot use as is. `text` keeps its readable text: as a plain
   reasoning item where the target reads one (Fireworks), otherwise as
-  assistant text (OpenAI and OpenRouter ignore plain reasoning items;
+  assistant text (OpenAI, OpenRouter and ChatGPT ignore plain reasoning items;
   Anthropic thinking needs a signature). Reasoning with no readable text (encrypted only, or
   Anthropic thinking with `display: "omitted"`) is dropped either way.
 

@@ -23,6 +23,8 @@ export { anthropic, anthropicProfile } from './providers/anthropic.ts';
 export { ANTHROPIC_MODELS } from './catalog/anthropic.ts';
 export { openrouter, openRouterProfile } from './providers/openrouter.ts';
 export { OPENROUTER_MODELS } from './catalog/openrouter.ts';
+export { chatgpt, chatGptProfile } from './providers/chatgpt.ts';
+export { CHATGPT_MODELS } from './catalog/chatgpt.ts';
 export {
   convert,
   type Conversion,
